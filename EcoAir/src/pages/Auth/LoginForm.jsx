@@ -78,11 +78,6 @@ const LoginForm = () => {
                   {loading ? "Entrando..." : "Entrar"}
                 </Button>
               </Form>
-
-              <div className="text-center mt-3">
-                <span>Não tem conta? </span>
-                <Link to="/register">Cadastre-se</Link>
-              </div>
             </Card.Body>
           </Card>
         </Col>

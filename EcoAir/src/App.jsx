@@ -15,10 +15,10 @@ function App() {
       <Routes>
         <Route path="/" element={< Home/>}/>
         <Route path='/register-device' element={<PrivateRoute> <DeviceForm /> </PrivateRoute>} />
-        <Route path='/device-list' element={<PrivateRoute><DeviceList /></PrivateRoute>} />
+        <Route path='/device-list' element={<DeviceList />} />
         <Route path='/update-device/:id' element={<PrivateRoute><DeviceForm /></PrivateRoute>} />
         <Route path="/login" element={<LoginForm />} />
-        <Route path="/register" element={<RegisterForm />} />
+        <Route path="/register" element={<PrivateRoute><RegisterForm /></PrivateRoute>} />
       </Routes>   
     </BrowserRouter>
   );

@@ -23,6 +23,7 @@ const Menu = () => {
 
         <Navbar.Collapse id='menu-principal'>
           <Nav className='me-auto'>
+            <Nav.Link as={Link} to="/login">Login</Nav.Link>
             <Nav.Link as={Link} to="/device-list">Ver Device</Nav.Link>
             <Nav.Link as={Link} to="/register-device">Registrar Device</Nav.Link>
           </Nav>

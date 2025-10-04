@@ -1,8 +1,11 @@
 import React from 'react'
+import WorldMap from '../components/WorldMap'
 
 const Home = () => {
   return (
-    <div>Home</div>
+    <div>
+      <WorldMap />
+    </div>
   )
 }
 

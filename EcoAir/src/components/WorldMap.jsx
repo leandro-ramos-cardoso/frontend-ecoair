@@ -49,44 +49,26 @@ export default function WorldMap() {
   return () => ctrl.abort();
 }, []);
 
-  // useEffect(() => {
-  //   const fetchOpenAQForAll = async () => {
-  //     if (!OPENAQ_API_KEY) return;
-
-  //     const batched = await Promise.allSettled(
-  //       stations.map(async (s) => {
-  //         const url = `https://api.openaq.org/v3/latest?coordinates=${s.lat},${s.lng}&radius=10000`;
-  //         const r = await fetch(url, { headers: { "X-API-Key": OPENAQ_API_KEY } });
-  //         const data = await r.json();
-  //         const measurements = data?.results?.[0]?.measurements ?? [];
-  //         return { id: s.id, measurements };
-  //       })
-  //     );
-
-  //     setStations((prev) =>
-  //       prev.map((st) => {
-  //         const hit = batched.find(
-  //           (b) => b.status === "fulfilled" && b.value.id === st.id
-  //         );
-  //         if (hit?.status === "fulfilled") {
-  //           return { ...st, measurements: hit.value.measurements };
-  //         }
-  //         return { ...st, measurements: [] };
-  //       })
-  //     );
-  //   };
-
-  //   if (stations.length) {
-  //     fetchOpenAQForAll();
-  //   }
-  // }, [stations.length]);
-
   if (loading) return <div>Carregando mapa…</div>;
   if (erro) return <Container>Erro ao carregar dados...</Container>
 
+  const markers = devices.map(device => ({
+    id: device.id ?? device.mac,
+    position: [device.latitude, device.longitude],
+    name: device.deviceName,
+    gasType: device.gasType
+    }));
+
+  const smallIcon = new L.Icon({
+        iconUrl: 'https://cdn-icons-png.flaticon.com/512/684/684908.png', // Exemplo: ícone simples
+        iconSize: [25, 25], // tamanho menor
+        iconAnchor: [12, 25], // ponto que "gruda" no mapa
+        popupAnchor: [0, -25]
+    });
+
   return (
 
-    <Container fluid className='pt-5 d-flex flex-column p-5 h-100 bg-light'>
+    /* <Container fluid className='pt-5 d-flex flex-column p-5 h-100 bg-light'>
       <div className="mx-auto" style={{ maxWidth: "1280px", width: "100%" }}>
         <Table striped bordered hover responsive className="align-middle text-center shadow-sm">
           <thead className="table-dark">
@@ -115,43 +97,30 @@ export default function WorldMap() {
           </tbody>
         </Table>
       </div>
-    </Container>
-    // <MapContainer center={center} zoom={2} style={{ height: "100vh", width: "100%" }}>
-    //   <TileLayer
-    //     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-    //     attribution="&copy; OpenStreetMap contributors"
-    //   />
-    //   {stations.map((s) => (
-    //     <Marker key={s.id} position={[s.lat, s.lng]}>
-    //       <Popup>
-    //         <strong>{s.name ?? "Estação"}</strong>
-    //         <br />
-    //         País: {s.countryName ?? s.countryCode ?? "-"}
-    //         <br />
-    //         🕓 TZ: {s.timezone ?? "-"}
-    //         <br />
-    //         📍 Lat: {s.lat} | Lng: {s.lng}
-    //         <br />
-    //         <strong>Parâmetros:</strong>{" "}
-    //         {Array.isArray(s.parameters) && s.parameters.length
-    //           ? s.parameters.join(", ")
-    //           : "-"}
-    //         <br />
-    //         {Array.isArray(s.measurements) && s.measurements.length > 0 ? (
-    //           <>
-    //             <strong>OpenAQ (últimas leituras):</strong>
-    //             {s.measurements.map((m) => (
-    //               <div key={`${m.parameter}-${m.value}`}>
-    //                 {m.parameter}: {m.value} {m.unit}
-    //               </div>
-    //             ))}
-    //           </>
-    //         ) : (
-    //           <em>Sem dados OpenAQ nesta busca</em>
-    //         )}
-    //       </Popup>
-    //     </Marker>
-    //   ))}
-    // </MapContainer>
+    </Container> */
+
+   <MapContainer center={[0, 0]} zoom={2} style={{ height: "80vh", width: "100%" }}>
+        <TileLayer
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution="&copy; OpenStreetMap contributors"
+        />
+        {devices.map(device => (
+            <Marker
+            key={device.id ?? device.mac}
+            position={[device.latitude, device.longitude]}
+            icon={smallIcon}
+            >
+                <Popup>
+                    <strong>{device.deviceName ?? "Dispositivo"}</strong>
+                    <br />
+                    🕵️ ID: {device.id ?? device.mac}
+                    <br />
+                    📍 Lat: {device.latitude} | Lng: {device.longitude}
+                    <br />
+                    🔬 Gas: {device.gasType ?? "-"}
+                </Popup>
+            </Marker>
+        ))}
+    </MapContainer>
   )
 }

@@ -1,11 +1,16 @@
 import React from 'react'
-import WorldMap from './components/WorldMap'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import Navbar from './components/Navbar'
+import Home from './pages/Home'
 
 function App() {
   return (
-    <div style={{ height: "100vh", width: "100%" }}>
-      <WorldMap />
-    </div>
+    <BrowserRouter>
+      <Navbar />
+      <Routes>
+        <Route path="/" element={< Home/>}/>
+      </Routes>   
+    </BrowserRouter>
   );
 }
 

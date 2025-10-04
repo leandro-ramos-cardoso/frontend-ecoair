@@ -1,9 +1,12 @@
 import React from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Navbar from './components/Menu'
+import PrivateRoute from './components/PrivateRoute'
 import Home from './pages/Home'
 import DeviceForm from './pages/Device/DeviceForm';
 import DeviceList from './pages/Device/DeviceList';
+import LoginForm from './pages/Auth/LoginForm';
+import RegisterForm from './pages/Auth/RegisterForm';
 
 function App() {
   return (
@@ -11,9 +14,11 @@ function App() {
       <Navbar />
       <Routes>
         <Route path="/" element={< Home/>}/>
-        <Route path='/register-device' element={<DeviceForm />} />
-        <Route path='/device-list' element={<DeviceList />} />
-        <Route path='/update-device/:id' element={<DeviceForm />} />
+        <Route path='/register-device' element={<PrivateRoute> <DeviceForm /> </PrivateRoute>} />
+        <Route path='/device-list' element={<PrivateRoute><DeviceList /></PrivateRoute>} />
+        <Route path='/update-device/:id' element={<PrivateRoute><DeviceForm /></PrivateRoute>} />
+        <Route path="/login" element={<LoginForm />} />
+        <Route path="/register" element={<RegisterForm />} />
       </Routes>   
     </BrowserRouter>
   );

@@ -2,13 +2,20 @@ import React from 'react';
 import { Container, Nav, Navbar, NavDropdown } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import { FaUserCircle, FaSignOutAlt } from 'react-icons/fa';
-
+import logo from "../assets/logo-ecoair.png";
 
 const Menu = () => {
   return (
     <Navbar bg='dark' variant='dark' expand='lg' sticky='top' className='shadow'>
       <Container>
-        <Navbar.Brand as={Link} to='/' className='fw-bold'>
+        <Navbar.Brand as={Link} to='/' className="fw-bold d-flex align-items-center">
+        <img
+            src={logo}
+            alt="Eco Air"
+            width="40"
+            height="40"
+            className="d-inline-block align-top me-2"
+          />
           Eco Air
         </Navbar.Brand>
 

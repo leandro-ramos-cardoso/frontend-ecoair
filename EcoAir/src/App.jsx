@@ -1,9 +1,12 @@
 import React from 'react'
+import WorldMap from './components/WorldMap'
 
-const App = () => {
+function App() {
   return (
-    <div>App</div>
-  )
+    <div style={{ height: "100vh", width: "100%" }}>
+      <WorldMap />
+    </div>
+  );
 }
 
-export default App
+export default App;

@@ -1,7 +1,9 @@
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import L from "leaflet";
+import { api } from "../services/api";
+import { Container, Table } from "react-bootstrap";
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -10,75 +12,146 @@ L.Icon.Default.mergeOptions({
   shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
 });
 
-const sensoresFake = [
-  { id: 1, nome: "Sensor Brasil", coords: [-15.7801, -47.9292], co2: 412, temp: 27 },
-  { id: 2, nome: "Sensor EUA", coords: [38.9072, -77.0369], co2: 420, temp: 23 },
-  { id: 3, nome: "Sensor França", coords: [48.8566, 2.3522], co2: 415, temp: 19 },
-];
-
-const OPENAQ_API_KEY = import.meta.env.OPENAQ_API_KEY; // Substitua pela sua API Key
+const OPENAQ_API_KEY = import.meta.env.VITE_OPENAQ_API_KEY;
 
 export default function WorldMap() {
-  const [sensores, setSensores] = useState([]);
+  const [stations, setStations] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [erro, setErro] = useState(false)
+  const [devices, setDevices] = useState([])
 
   useEffect(() => {
-    const fetchOpenAQData = async (sensor) => {
-      try {
-        const lat = sensor.coords[0];
-        const lon = sensor.coords[1];
+  const ctrl = new AbortController();
 
-        const url = `https://api.openaq.org/v3/latest?coordinates=${lat},${lon}&radius=10000`;
+  ;(async () => {
+    try {
+      setLoading(true);
+      setErro(null);
 
-        const res = await fetch(url, {
-          headers: {
-            "X-API-Key": OPENAQ_API_KEY
-          }
-        });
+      const { data } = await api.get('/device', { signal: ctrl.signal });
+      if (ctrl.signal.aborted) return;
+      setDevices(Array.isArray(data) ? data : []);
+    } catch (e) {
+      const canceled =
+        e?.name === 'CanceledError' ||
+        e?.name === 'AbortError' ||
+        e?.code === 'ERR_CANCELED';
 
-        const data = await res.json();
-        // Pega o primeiro resultado e converte em um objeto mais simples
-        const measurements = data.results?.[0]?.measurements || [];
-        return { ...sensor, measurements };
-      } catch (error) {
-        console.error("Erro ao buscar OpenAQ:", error);
-        return { ...sensor, measurements: [] };
+      if (!canceled) {
+        setErro('Houve um erro ao carregar as informações.');
+        console.error(e);
       }
-    };
+    } finally {
+      if (!ctrl.signal.aborted) setLoading(false);
+    }
+  })();
 
-    const carregarSensores = async () => {
-      const sensoresComOpenAQ = await Promise.all(
-        sensoresFake.map(sensor => fetchOpenAQData(sensor))
-      );
-      setSensores(sensoresComOpenAQ);
-    };
+  return () => ctrl.abort();
+}, []);
 
-    carregarSensores();
-  }, []);
+  // useEffect(() => {
+  //   const fetchOpenAQForAll = async () => {
+  //     if (!OPENAQ_API_KEY) return;
+
+  //     const batched = await Promise.allSettled(
+  //       stations.map(async (s) => {
+  //         const url = `https://api.openaq.org/v3/latest?coordinates=${s.lat},${s.lng}&radius=10000`;
+  //         const r = await fetch(url, { headers: { "X-API-Key": OPENAQ_API_KEY } });
+  //         const data = await r.json();
+  //         const measurements = data?.results?.[0]?.measurements ?? [];
+  //         return { id: s.id, measurements };
+  //       })
+  //     );
+
+  //     setStations((prev) =>
+  //       prev.map((st) => {
+  //         const hit = batched.find(
+  //           (b) => b.status === "fulfilled" && b.value.id === st.id
+  //         );
+  //         if (hit?.status === "fulfilled") {
+  //           return { ...st, measurements: hit.value.measurements };
+  //         }
+  //         return { ...st, measurements: [] };
+  //       })
+  //     );
+  //   };
+
+  //   if (stations.length) {
+  //     fetchOpenAQForAll();
+  //   }
+  // }, [stations.length]);
+
+  if (loading) return <div>Carregando mapa…</div>;
+  if (erro) return <Container>Erro ao carregar dados...</Container>
 
   return (
-    <MapContainer center={[20, 0]} zoom={2} style={{ height: "100vh", width: "100%" }}>
-      <TileLayer
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        attribution="&copy; OpenStreetMap contributors"
-      />
-      {sensores.map(sensor => (
-        <Marker key={sensor.id} position={sensor.coords}>
-          <Popup>
-            <strong>{sensor.nome}</strong><br />
-            🌍 Lat: {sensor.coords[0]} | Lon: {sensor.coords[1]} <br />
-            💨 CO₂ local: {sensor.co2} ppm <br />
-            🌡️ Temperatura: {sensor.temp} °C <br />
-            <strong>OpenAQ:</strong><br />
-            {sensor.measurements.length > 0
-              ? sensor.measurements.map(m => (
-                  <div key={m.parameter}>
-                    {m.parameter}: {m.value} {m.unit}
-                  </div>
-                ))
-              : "Sem dados OpenAQ"}
-          </Popup>
-        </Marker>
-      ))}
-    </MapContainer>
-  );
+
+    <Container fluid className='pt-5 d-flex flex-column p-5 h-100 bg-light'>
+      <div className="mx-auto" style={{ maxWidth: "1280px", width: "100%" }}>
+        <Table striped bordered hover responsive className="align-middle text-center shadow-sm">
+          <thead className="table-dark">
+            <tr>
+              <th>id</th>
+              <th>Device name</th>
+              <th>MAC</th>
+              <th>Latitude</th>
+              <th>Longitude</th>
+              <th>Gas type</th>
+            </tr>
+          </thead>
+          <tbody>
+            {
+              devices.map(device => (
+                <tr key={device.id ?? device.mac}>
+                  <td>{device.id}</td>
+                  <td>{device.deviceName}</td>
+                  <td>{device.mac}</td>
+                  <td>{device.latitude}</td>
+                  <td>{device.longitude}</td>
+                  <td>{device.gasType}</td>
+                </tr>
+              ))
+            }
+          </tbody>
+        </Table>
+      </div>
+    </Container>
+    // <MapContainer center={center} zoom={2} style={{ height: "100vh", width: "100%" }}>
+    //   <TileLayer
+    //     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+    //     attribution="&copy; OpenStreetMap contributors"
+    //   />
+    //   {stations.map((s) => (
+    //     <Marker key={s.id} position={[s.lat, s.lng]}>
+    //       <Popup>
+    //         <strong>{s.name ?? "Estação"}</strong>
+    //         <br />
+    //         País: {s.countryName ?? s.countryCode ?? "-"}
+    //         <br />
+    //         🕓 TZ: {s.timezone ?? "-"}
+    //         <br />
+    //         📍 Lat: {s.lat} | Lng: {s.lng}
+    //         <br />
+    //         <strong>Parâmetros:</strong>{" "}
+    //         {Array.isArray(s.parameters) && s.parameters.length
+    //           ? s.parameters.join(", ")
+    //           : "-"}
+    //         <br />
+    //         {Array.isArray(s.measurements) && s.measurements.length > 0 ? (
+    //           <>
+    //             <strong>OpenAQ (últimas leituras):</strong>
+    //             {s.measurements.map((m) => (
+    //               <div key={`${m.parameter}-${m.value}`}>
+    //                 {m.parameter}: {m.value} {m.unit}
+    //               </div>
+    //             ))}
+    //           </>
+    //         ) : (
+    //           <em>Sem dados OpenAQ nesta busca</em>
+    //         )}
+    //       </Popup>
+    //     </Marker>
+    //   ))}
+    // </MapContainer>
+  )
 }

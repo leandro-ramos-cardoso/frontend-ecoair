@@ -3,7 +3,6 @@ import "leaflet/dist/leaflet.css";
 import { useEffect, useState } from "react";
 import L from "leaflet";
 import { api } from "../services/api";
-// Importações ajustadas: Adicionando Offcanvas
 import { Container, Offcanvas, ListGroup } from "react-bootstrap";
 import { FaCloud } from "react-icons/fa";
 import ReactDOMServer from "react-dom/server";
@@ -17,10 +16,12 @@ L.Icon.Default.mergeOptions({
 
 export default function WorldMap() {
   const [devices, setDevices] = useState([]);
-  const [sensorData, setSensorData] = useState({});
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState(false);
-  
+
+  const [sensorData, setSensorData] = useState({});
+  const [sensorLoading, setSensorLoading] = useState({});
+
   const [showOffcanvas, setShowOffcanvas] = useState(false);
   const [selectedDevice, setSelectedDevice] = useState(null);
 
@@ -38,12 +39,16 @@ export default function WorldMap() {
         setDevices(Array.isArray(data) ? data : []);
       } catch (e) {
         const canceled =
-          e?.name === "CanceledError" ||
-          e?.name === "AbortError" ||
-          e?.code === "ERR_CANCELED";
+          e?.name === "CanceledError" || e?.name === "AbortError" || e?.code === "ERR_CANCELED";
+
         if (!canceled) {
-          setErro("Houve um erro ao carregar as informações.");
-          console.error(e);
+          const status = e?.response?.status;
+          if (status === 401 || status === 403) {
+            setErro("Acesso negado ou sessão expirada. Verifique as permissões da rota /device.");
+          } else {
+            setErro("Houve um erro ao carregar as informações iniciais.");
+          }
+          console.error("Erro ao carregar /device:", e);
         }
       } finally {
         if (!ctrl.signal.aborted) setLoading(false);
@@ -53,7 +58,7 @@ export default function WorldMap() {
   }, []);
 
   if (loading) return <div>Carregando mapa…</div>;
-  if (erro) return <Container>Erro ao carregar dados...</Container>;
+  if (erro) return <Container className="mt-4 text-danger">Erro ao carregar dados: {erro}</Container>;
 
   const getQualityColor = (ppm) => {
     if (ppm == null) return "gray";
@@ -76,19 +81,47 @@ export default function WorldMap() {
   const fetchSensorData = async (device) => {
     setSelectedDevice(device);
     handleShow();
-    
+
+    const deviceMac = device.mac;
+    setSensorLoading(prev => ({ ...prev, [deviceMac]: true }));
+    setSensorData(prev => ({ ...prev, [deviceMac]: null }));
+
     try {
-      const { data } = await api.get(`/sensor-data/${device.mac}`);
-      setSensorData((prev) => ({ ...prev, [device.mac]: data }));
+
+      const { data } = await api.get(`/sensor-data?mac=${encodeURIComponent(device.mac)}`);
+
+      const isArray = Array.isArray(data);
+      const latestItem = isArray && data.length > 0 ? data[data.length - 1] : null;
+
+      let latestData = null;
+
+      if (latestItem) {
+        latestData = {
+          ...latestItem,
+          ppm: latestItem.sensorValue
+        };
+      }
+
+      setSensorData((prev) => ({
+        ...prev,
+        [deviceMac]: latestData
+      }));
+
     } catch (e) {
-      console.error("Erro ao buscar dados do sensor", e);
+      console.error(`Erro ao buscar dados do sensor para MAC ${deviceMac}:`, e);
+      setSensorData((prev) => ({ ...prev, [deviceMac]: { error: true } }));
+    } finally {
+      setSensorLoading(prev => ({ ...prev, [deviceMac]: false }));
     }
   };
 
   const WORLD_BOUNDS = L.latLngBounds([-85, -180], [85, 180]);
-  
+
+  const sensorIsLoading = selectedDevice ? sensorLoading[selectedDevice.mac] : false;
   const currentSensorData = selectedDevice ? sensorData[selectedDevice.mac] : null;
   const currentPpm = currentSensorData?.ppm ?? null;
+  const currentError = currentSensorData?.error ?? false;
+
 
   return (
     <>
@@ -130,11 +163,8 @@ export default function WorldMap() {
                 key={device.id ?? device.mac}
                 position={[device.latitude, device.longitude]}
                 icon={getIcon(ppm)}
-                // Evento de clique modificado para chamar a nova função com o objeto device
                 eventHandlers={{ click: () => fetchSensorData(device) }}
               >
-                {/* O componente Popup foi removido daqui */}
-                
                 <Tooltip>
                   Clique no marcador {device.deviceName ?? "Dispositivo"} para mais detalhes
                 </Tooltip>
@@ -144,7 +174,6 @@ export default function WorldMap() {
         </MapContainer>
       </div>
 
-      {/* NOVO COMPONENTE: Offcanvas para exibir detalhes do dispositivo */}
       <Offcanvas show={showOffcanvas} onHide={handleClose} placement="end">
         <Offcanvas.Header closeButton>
           <Offcanvas.Title>
@@ -158,20 +187,24 @@ export default function WorldMap() {
               <ListGroup.Item><strong>Tipo de Gás:</strong> {selectedDevice.gasType ?? "-"}</ListGroup.Item>
               <ListGroup.Item><strong>Latitude:</strong> {selectedDevice.latitude}</ListGroup.Item>
               <ListGroup.Item><strong>Longitude:</strong> {selectedDevice.longitude}</ListGroup.Item>
-              
-              <hr/>
 
-              {/* Dados do Sensor */}
+              <hr />
+
               <h6>Dados de Leitura:</h6>
-              {currentPpm != null ? (
+
+              {sensorIsLoading ? (
+                <ListGroup.Item className="text-primary">Carregando dados do sensor...</ListGroup.Item>
+              ) : currentError ? (
+                <ListGroup.Item className="text-danger">Erro ao carregar dados. Verifique a API ou permissões.</ListGroup.Item>
+              ) : currentPpm != null ? (
                 <>
                   <ListGroup.Item>
-                    <strong>PPM (Partes por Milhão):</strong> 
+                    <strong>PPM (Partes por Milhão):</strong>
                     <span style={{ color: getQualityColor(currentPpm), fontWeight: 'bold' }}> {currentPpm}</span>
                   </ListGroup.Item>
                 </>
               ) : (
-                <ListGroup.Item>Carregando dados do sensor...</ListGroup.Item>
+                <ListGroup.Item>Nenhum dado de leitura recente disponível.</ListGroup.Item>
               )}
             </ListGroup>
           ) : (

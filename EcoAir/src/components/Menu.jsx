@@ -1,19 +1,19 @@
-import React, { useEffect, useState } from 'react';
-import { Container, Nav, Navbar, NavDropdown } from 'react-bootstrap';
-import { Link, useParams } from 'react-router-dom';
-import { FaUserCircle, FaSignOutAlt } from 'react-icons/fa';
+import React, { useEffect, useState } from "react";
+import { Container, Nav, Navbar, NavDropdown } from "react-bootstrap";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { FaUserCircle, FaSignOutAlt } from "react-icons/fa";
 import logo from "../assets/logo-ecoair.png";
-import { api } from '../services/api';
+import { api } from "../services/api";
 
 const Menu = () => {
-  const { id } = useParams();
-
+  const navigate = useNavigate();
+  const location = useLocation();
   const [usuario, setUsuario] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [erro, setErro] = useState(null);
 
   useEffect(() => {
-    if (!id) {
+    const token = localStorage.getItem("token");
+    if (!token) {
       setUsuario(null);
       return;
     }
@@ -23,19 +23,19 @@ const Menu = () => {
     (async () => {
       try {
         setLoading(true);
-        setErro(null);
-
-        const { data } = await api.get(`/users/${id}`, { signal: ctrl.signal });
-
+        const { data } = await api.get("/auth/me", { signal: ctrl.signal });
         setUsuario(data ?? null);
       } catch (e) {
-        const canceled =
-          e?.name === 'CanceledError' ||
-          e?.name === 'AbortError' ||
-          e?.code === 'ERR_CANCELED';
-        if (!canceled) {
-          setErro('Houve um erro ao listar o usuário.');
-          console.error(e);
+        if (e.code === 'ERR_CANCELED') {
+          return;
+        }
+
+        if (e?.response?.status === 401 || e?.response?.status === 403) {
+          localStorage.removeItem("token");
+          setUsuario(null);
+        } else {
+          console.error("Erro ao obter /me:", e);
+          setUsuario(null);
         }
       } finally {
         if (!ctrl.signal.aborted) setLoading(false);
@@ -43,19 +43,25 @@ const Menu = () => {
     })();
 
     return () => ctrl.abort();
-  }, [id]);
+  }, [location.pathname]);
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    setUsuario(null);
+    navigate("/login");
+  };
 
   const tituloDropdown = (
     <span className="d-inline-flex align-items-center">
       <FaUserCircle className="me-2" />
-      {loading ? 'Carregando...' : (usuario?.name || 'Usuário')}
+      {loading ? "Carregando..." : (usuario?.name ?? usuario?.nome ?? usuario?.username ?? "Usuário")}
     </span>
   );
 
   return (
-    <Navbar bg='dark' variant='dark' expand='lg' sticky='top' className='shadow'>
+    <Navbar bg="dark" variant="dark" expand="lg" sticky="top" className="shadow">
       <Container>
-        <Navbar.Brand as={Link} to='/' className="fw-bold d-flex align-items-center">
+        <Navbar.Brand as={Link} to="/" className="fw-bold d-flex align-items-center">
           <img
             src={logo}
             alt="Eco Air"
@@ -66,26 +72,27 @@ const Menu = () => {
           Eco Air
         </Navbar.Brand>
 
-        <Navbar.Toggle aria-controls='menu-principal' />
-
-        <Navbar.Collapse id='menu-principal'>
-          <Nav className='me-auto'>
-            <Nav.Link as={Link} to="/login">Login</Nav.Link>
+        <Navbar.Toggle aria-controls="menu-principal" />
+        <Navbar.Collapse id="menu-principal">
+          <Nav className="me-auto">
             <Nav.Link as={Link} to="/device-list">Ver Device</Nav.Link>
             <Nav.Link as={Link} to="/register-device">Registrar Device</Nav.Link>
           </Nav>
 
           <Nav>
-            <NavDropdown title={tituloDropdown} align="end">
-              {erro && <NavDropdown.Item disabled className="text-danger">{erro}</NavDropdown.Item>}
-              <NavDropdown.Item as={Link} to={id ? `/users/${id}` : '#'} disabled={!id}>
-                Meu Perfil
-              </NavDropdown.Item>
-              <NavDropdown.Divider />
-              <NavDropdown.Item>
-                <FaSignOutAlt className='me-2' /> Sair
-              </NavDropdown.Item>
-            </NavDropdown>
+            {!usuario && !loading ? (
+              <Nav.Link as={Link} to="/login">Login</Nav.Link>
+            ) : (
+              <NavDropdown title={tituloDropdown} align="end">
+                <NavDropdown.Item as={Link} to="/meu-perfil">
+                  Meu Perfil
+                </NavDropdown.Item>
+                <NavDropdown.Divider />
+                <NavDropdown.Item onClick={handleLogout}>
+                  <FaSignOutAlt className="me-2" /> Sair
+                </NavDropdown.Item>
+              </NavDropdown>
+            )}
           </Nav>
         </Navbar.Collapse>
       </Container>

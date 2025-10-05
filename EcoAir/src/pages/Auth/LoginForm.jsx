@@ -21,11 +21,9 @@ const LoginForm = () => {
     try {
       const response = await api.post("/auth/login", { username, password });
 
-      // Armazena o token no localStorage
       localStorage.setItem("token", response.data.token);
 
-      // Redireciona para dashboard ou lista de devices
-      navigate("/devices");
+      navigate("/");
     } catch (err) {
       console.error("Erro no login:", err);
       setErro("Usuário ou senha inválidos. Tente novamente.");

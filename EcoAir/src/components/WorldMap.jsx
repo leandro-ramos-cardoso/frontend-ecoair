@@ -1,4 +1,4 @@
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, Tooltip } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { useEffect, useState } from "react";
 import L from "leaflet";
@@ -83,14 +83,17 @@ export default function WorldMap() {
 
   return (
    <MapContainer
-      center={[0, 0]}
-      zoom={2}
-      style={{ height: "80vh", width: "100%" }}
-    >
-      <TileLayer
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        attribution="&copy; OpenStreetMap contributors"
-      />
+    center={[-7.11532, -34.861]} 
+    zoom={3}          // mostra continentes inicialmente
+    minZoom={2}       // não deixa "abrir" demais (mundo já visível)
+    maxZoom={18}      // suficiente para ver ruas e bairros
+    style={{ height: "100vh", width: "100%" }}
+  >
+    <TileLayer
+      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+      noWrap={true}
+    />
       {devices.map((device) => {
         const sensor = sensorData[device.id];
         const ppm = sensor?.ppm ?? null;

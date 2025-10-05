@@ -23,6 +23,8 @@ const Sobre = () => {
             problemaTexto: "O ar que respiramos está cada vez mais saturado por poluentes invisíveis e mortais como CO, SO2, NO2, PM2.5, carbono negro e O3. A poluição do ar é responsável por cerca de 7 milhões de mortes prematuras anuais, afetando principalmente crianças e comunidades vulneráveis.",
             solucaoTitulo: "Nossa Solução",
             solucaoTexto: "Protótipo com sensor MQ-9 e microcontrolador ESP32 para medir CO em PPM. Dados enviados para banco e apresentados em mapa interativo (Bom, Médio, Ruim). Sistema escalável para outros gases e integrado à API OpenAQ, permitindo comparação global e validação.",
+            repoTitulo: "Links para o repositorio GitHub",
+      repoTexto: "https://github.com/leandro-ramos-cardoso/iot | https://github.com/leandro-ramos-cardoso/frontend-ecoair | https://github.com/leandro-ramos-cardoso/backend-ecoair",
             impactoTitulo: "Impacto e Benefícios",
             impactoLista: [
                 "Monitoramento em tempo real da qualidade do ar",
@@ -44,6 +46,8 @@ const Sobre = () => {
       problemaTexto: "The air we breathe is increasingly saturated with invisible and deadly pollutants such as CO, SO2, NO2, PM2.5, black carbon, and O3. Air pollution causes approximately 7 million premature deaths annually, mainly affecting children and vulnerable communities.",
       solucaoTitulo: "Our Solution",
       solucaoTexto: "Prototype using MQ-9 sensor and ESP32 microcontroller to measure CO in PPM. Data sent to a database and displayed on an interactive map (Good, Medium, Poor). Scalable system for other gases and integrated with OpenAQ API for global comparison and validation.",
+      repoTitulo: "Links to Repository GitHub",
+      repoTexto: "https://github.com/leandro-ramos-cardoso/iot | https://github.com/leandro-ramos-cardoso/frontend-ecoair | https://github.com/leandro-ramos-cardoso/backend-ecoair",
       impactoTitulo: "Impact and Benefits",
       impactoLista: [
         "Real-time air quality monitoring",
@@ -100,6 +104,13 @@ const Sobre = () => {
               <Card.Title className="text-primary">{t.desafioTitulo}</Card.Title>
               <Card.Subtitle className="mb-2 text-muted">{t.desafioSubtitulo}</Card.Subtitle>
               <Card.Text>{t.time}</Card.Text>
+            </Card.Body>
+          </Card>
+
+        <Card bg="secundary" className="shadow-sm mb-3">
+            <Card.Body>
+              <Card.Title className="text-primary">{t.repoTitulo}</Card.Title>
+              <Card.Text>{t.repoTexto}</Card.Text>
             </Card.Body>
           </Card>
 

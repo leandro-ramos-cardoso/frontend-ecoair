@@ -3,7 +3,8 @@ import "leaflet/dist/leaflet.css";
 import { useEffect, useState } from "react";
 import L from "leaflet";
 import { api } from "../services/api";
-import { Container } from "react-bootstrap";
+// Importações ajustadas: Adicionando Offcanvas
+import { Container, Offcanvas, ListGroup } from "react-bootstrap";
 import { FaCloud } from "react-icons/fa";
 import ReactDOMServer from "react-dom/server";
 
@@ -19,6 +20,12 @@ export default function WorldMap() {
   const [sensorData, setSensorData] = useState({});
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState(false);
+  
+  const [showOffcanvas, setShowOffcanvas] = useState(false);
+  const [selectedDevice, setSelectedDevice] = useState(null);
+
+  const handleClose = () => setShowOffcanvas(false);
+  const handleShow = () => setShowOffcanvas(true);
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -66,76 +73,112 @@ export default function WorldMap() {
       popupAnchor: [0, -22],
     });
 
-  const fetchSensorData = async (mac) => {
+  const fetchSensorData = async (device) => {
+    setSelectedDevice(device);
+    handleShow();
+    
     try {
-      const { data } = await api.get(`/sensor-data/${mac}`);
-      setSensorData((prev) => ({ ...prev, [mac]: data }));
+      const { data } = await api.get(`/sensor-data/${device.mac}`);
+      setSensorData((prev) => ({ ...prev, [device.mac]: data }));
     } catch (e) {
       console.error("Erro ao buscar dados do sensor", e);
     }
   };
 
   const WORLD_BOUNDS = L.latLngBounds([-85, -180], [85, 180]);
+  
+  const currentSensorData = selectedDevice ? sensorData[selectedDevice.mac] : null;
+  const currentPpm = currentSensorData?.ppm ?? null;
 
   return (
-    <div
-      style={{
-        position: "absolute",
-        top: "56px",
-        left: 0,
-        right: 0,
-        bottom: 0,
-        width: "100%",
-        height: "calc(100vh - 56px)",
-        overflow: "hidden",
-      }}
-    >
-      <MapContainer
-        center={[-7.11532, -34.861]}
-        zoom={3}
-        minZoom={3}
-        maxZoom={18}
-        maxBounds={WORLD_BOUNDS}
-        maxBoundsViscosity={1.0}
-        worldCopyJump={false}
-        style={{ height: "100%", width: "100%" }}
-        attributionControl={false}
-        whenReady={(ev) => ev.target.invalidateSize()}
+    <>
+      <div
+        style={{
+          position: "absolute",
+          top: "56px",
+          left: 0,
+          right: 0,
+          bottom: 0,
+          width: "100%",
+          height: "calc(100vh - 56px)",
+          overflow: "hidden",
+        }}
       >
-        <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          noWrap={true}
-        />
+        <MapContainer
+          center={[-7.11532, -34.861]}
+          zoom={3}
+          minZoom={3}
+          maxZoom={18}
+          maxBounds={WORLD_BOUNDS}
+          maxBoundsViscosity={1.0}
+          worldCopyJump={false}
+          style={{ height: "100%", width: "100%" }}
+          attributionControl={false}
+          whenReady={(ev) => ev.target.invalidateSize()}
+        >
+          <TileLayer
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            noWrap={true}
+          />
 
-        {devices.map((device) => {
-          const sensor = sensorData[device.mac];
-          const ppm = sensor?.ppm ?? null;
+          {devices.map((device) => {
+            const sensor = sensorData[device.mac];
+            const ppm = sensor?.ppm ?? null;
 
-          return (
-            <Marker
-              key={device.id ?? device.mac}
-              position={[device.latitude, device.longitude]}
-              icon={getIcon(ppm)}
-              eventHandlers={{ click: () => fetchSensorData(device.mac) }}
-            >
-              <Popup>
-                <strong>{device.deviceName ?? "Dispositivo"}</strong>
-                <br />
-                Latitude: {device.latitude}
-                <br />
-                Longitude: {device.longitude}
-                <br />
-                Gas: {device.gasType ?? "-"}
-                <br />
-                {ppm != null && <>PPM: {ppm}<br /></>}
-              </Popup>
-              <Tooltip>
-                Clique no marcador {device.deviceName ?? "Dispositivo"} para mais detalhes
-              </Tooltip>
-            </Marker>
-          );
-        })}
-      </MapContainer>
-    </div>
+            return (
+              <Marker
+                key={device.id ?? device.mac}
+                position={[device.latitude, device.longitude]}
+                icon={getIcon(ppm)}
+                // Evento de clique modificado para chamar a nova função com o objeto device
+                eventHandlers={{ click: () => fetchSensorData(device) }}
+              >
+                {/* O componente Popup foi removido daqui */}
+                
+                <Tooltip>
+                  Clique no marcador {device.deviceName ?? "Dispositivo"} para mais detalhes
+                </Tooltip>
+              </Marker>
+            );
+          })}
+        </MapContainer>
+      </div>
+
+      {/* NOVO COMPONENTE: Offcanvas para exibir detalhes do dispositivo */}
+      <Offcanvas show={showOffcanvas} onHide={handleClose} placement="end">
+        <Offcanvas.Header closeButton>
+          <Offcanvas.Title>
+            {selectedDevice?.deviceName ?? "Detalhes do Dispositivo"}
+          </Offcanvas.Title>
+        </Offcanvas.Header>
+        <Offcanvas.Body>
+          {selectedDevice ? (
+            <ListGroup variant="flush">
+              <ListGroup.Item><strong>MAC:</strong> {selectedDevice.mac}</ListGroup.Item>
+              <ListGroup.Item><strong>Tipo de Gás:</strong> {selectedDevice.gasType ?? "-"}</ListGroup.Item>
+              <ListGroup.Item><strong>Latitude:</strong> {selectedDevice.latitude}</ListGroup.Item>
+              <ListGroup.Item><strong>Longitude:</strong> {selectedDevice.longitude}</ListGroup.Item>
+              
+              <hr/>
+
+              {/* Dados do Sensor */}
+              <h6>Dados de Leitura:</h6>
+              {currentPpm != null ? (
+                <>
+                  <ListGroup.Item>
+                    <strong>PPM (Partes por Milhão):</strong> 
+                    <span style={{ color: getQualityColor(currentPpm), fontWeight: 'bold' }}> {currentPpm}</span>
+                  </ListGroup.Item>
+                </>
+              ) : (
+                <ListGroup.Item>Carregando dados do sensor...</ListGroup.Item>
+              )}
+            </ListGroup>
+          ) : (
+            <p>Selecione um marcador no mapa para ver os detalhes.</p>
+          )}
+        </Offcanvas.Body>
+      </Offcanvas>
+    </>
   );
 }

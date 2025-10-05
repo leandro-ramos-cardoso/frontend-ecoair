@@ -7,6 +7,7 @@ import DeviceForm from './pages/Device/DeviceForm';
 import DeviceList from './pages/Device/DeviceList';
 import LoginForm from './pages/Auth/LoginForm';
 import RegisterForm from './pages/Auth/RegisterForm';
+import Sobre from './pages/About/Sobre';
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
         <Route path='/update-device/:id' element={<PrivateRoute><DeviceForm /></PrivateRoute>} />
         <Route path="/login" element={<LoginForm />} />
         <Route path="/register" element={<RegisterForm />} />
+        <Route path="/sobre" element={<Sobre />} />
         {/*<Route path="/register" element={<PrivateRoute><RegisterForm /></PrivateRoute>} /> */}
       </Routes>   
     </BrowserRouter>

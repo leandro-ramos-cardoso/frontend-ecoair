@@ -77,6 +77,7 @@ const Menu = () => {
           <Nav className="me-auto">
             <Nav.Link as={Link} to="/device-list">Ver Device</Nav.Link>
             <Nav.Link as={Link} to="/register-device">Registrar Device</Nav.Link>
+            <Nav.Link as={Link} to="/sobre">Sobre</Nav.Link>
           </Nav>
 
           <Nav>

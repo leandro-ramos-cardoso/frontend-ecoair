@@ -113,26 +113,8 @@ export default function WorldMap() {
               <br />
               Gas: {device.gasType ?? "-"}
               <br />
-              {sensor ? (
-                <>
-                  <hr />
-                  <strong>Última leitura:</strong> {sensor.ppm} ppm
-                  <br />
-                  Qualidade:{" "}
-                  <span style={{ color: getQualityColor(sensor.ppm) }}>
-                    {sensor.ppm < 10
-                      ? "BOM (seguro)"
-                      : sensor.ppm <= 50
-                      ? "MÉDIO (atenção)"
-                      : "RUIM (perigo)"}
-                  </span>
-                  <br />
-                  ⏱ {new Date(sensor.timestamp).toLocaleString()}
-                </>
-              ) : (
-                <em>Clique no marcador para carregar dados...</em>
-              )}
             </Popup>
+            <Tooltip>Clique no marcador {device.deviceName ?? "Dispositivo"} para mais detalhes</Tooltip>
           </Marker>
         );
       })}

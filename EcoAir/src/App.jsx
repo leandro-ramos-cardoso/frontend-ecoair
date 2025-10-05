@@ -18,7 +18,8 @@ function App() {
         <Route path='/device-list' element={<DeviceList />} />
         <Route path='/update-device/:id' element={<PrivateRoute><DeviceForm /></PrivateRoute>} />
         <Route path="/login" element={<LoginForm />} />
-        <Route path="/register" element={<PrivateRoute><RegisterForm /></PrivateRoute>} />
+        <Route path="/register" element={<RegisterForm />} />
+        {/*<Route path="/register" element={<PrivateRoute><RegisterForm /></PrivateRoute>} /> */}
       </Routes>   
     </BrowserRouter>
   );

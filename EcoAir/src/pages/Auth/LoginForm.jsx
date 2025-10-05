@@ -40,7 +40,12 @@ const LoginForm = () => {
         <Col xs={12} md={6} lg={4}>
           <Card className="shadow p-4">
             <Card.Body>
-              <h2 className="text-center mb-4">Login</h2>
+              <h2 className="text-center mb-4 fw-bold text-success">
+                Login
+              </h2>
+              <p className="text-center text-muted mb-4">
+                Preencha os dados abaixo para logar
+              </p>             
 
               {erro && <Alert variant="danger">{erro}</Alert>}
 

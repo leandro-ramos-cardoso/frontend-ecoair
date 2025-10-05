@@ -1,15 +1,62 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Container, Nav, Navbar, NavDropdown } from 'react-bootstrap';
-import { Link } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { FaUserCircle, FaSignOutAlt } from 'react-icons/fa';
 import logo from "../assets/logo-ecoair.png";
+import { api } from '../services/api';
 
 const Menu = () => {
+  const { id } = useParams();
+
+  const [usuario, setUsuario] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [erro, setErro] = useState(null);
+
+  useEffect(() => {
+    if (!id) {
+      setUsuario(null);
+      return;
+    }
+
+    const ctrl = new AbortController();
+
+    (async () => {
+      try {
+        setLoading(true);
+        setErro(null);
+
+        const { data } = await api.get(`/users/${id}`, { signal: ctrl.signal });
+
+        setUsuario(data ?? null);
+      } catch (e) {
+        const canceled =
+          e?.name === 'CanceledError' ||
+          e?.name === 'AbortError' ||
+          e?.code === 'ERR_CANCELED';
+        if (!canceled) {
+          setErro('Houve um erro ao listar o usuário.');
+          console.error(e);
+        }
+      } finally {
+        if (!ctrl.signal.aborted) setLoading(false);
+      }
+    })();
+
+    return () => ctrl.abort();
+  }, [id]);
+
+  const tituloDropdown = (
+    <span className="d-inline-flex align-items-center">
+      <FaUserCircle className="me-2" />
+      {loading ? 'Carregando...' : (usuario?.name || 'Usuário')}
+    </span>
+  );
+
   return (
     <Navbar bg='dark' variant='dark' expand='lg' sticky='top' className='shadow'>
       <Container>
         <Navbar.Brand as={Link} to='/' className="fw-bold d-flex align-items-center">
-        <img
+          <img
             src={logo}
             alt="Eco Air"
             width="40"
@@ -29,16 +76,11 @@ const Menu = () => {
           </Nav>
 
           <Nav>
-            <NavDropdown
-              title={
-                <span>
-                  <FaUserCircle className='me-2' />
-                  Gabriel Chaves
-                </span>
-              }
-              align="end"
-            >
-              <NavDropdown.Item>Meu Perfil</NavDropdown.Item>
+            <NavDropdown title={tituloDropdown} align="end">
+              {erro && <NavDropdown.Item disabled className="text-danger">{erro}</NavDropdown.Item>}
+              <NavDropdown.Item as={Link} to={id ? `/users/${id}` : '#'} disabled={!id}>
+                Meu Perfil
+              </NavDropdown.Item>
               <NavDropdown.Divider />
               <NavDropdown.Item>
                 <FaSignOutAlt className='me-2' /> Sair
@@ -48,7 +90,7 @@ const Menu = () => {
         </Navbar.Collapse>
       </Container>
     </Navbar>
-  )
-}
+  );
+};
 
-export default Menu
+export default Menu;

@@ -9,26 +9,23 @@ import ReactDOMServer from "react-dom/server";
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl:
-    "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png",
+  iconRetinaUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png",
   iconUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png",
   shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
 });
 
 export default function WorldMap() {
   const [devices, setDevices] = useState([]);
-  const [sensorData, setSensorData] = useState({}); // guarda ppm por deviceId
+  const [sensorData, setSensorData] = useState({});
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState(false);
 
- useEffect(() => {
+  useEffect(() => {
     const ctrl = new AbortController();
-
     (async () => {
       try {
         setLoading(true);
         setErro(null);
-
         const { data } = await api.get("/device", { signal: ctrl.signal });
         if (ctrl.signal.aborted) return;
         setDevices(Array.isArray(data) ? data : []);
@@ -37,7 +34,6 @@ export default function WorldMap() {
           e?.name === "CanceledError" ||
           e?.name === "AbortError" ||
           e?.code === "ERR_CANCELED";
-
         if (!canceled) {
           setErro("Houve um erro ao carregar as informações.");
           console.error(e);
@@ -46,81 +42,100 @@ export default function WorldMap() {
         if (!ctrl.signal.aborted) setLoading(false);
       }
     })();
-
     return () => ctrl.abort();
   }, []);
 
   if (loading) return <div>Carregando mapa…</div>;
-  if (erro) return <Container>Erro ao carregar dados...</Container>
+  if (erro) return <Container>Erro ao carregar dados...</Container>;
 
-   const getQualityColor = (ppm) => {
+  const getQualityColor = (ppm) => {
     if (ppm == null) return "gray";
-    if (ppm < 10) return "green"; // BOM
-    if (ppm <= 50) return "orange"; // MÉDIO
-    return "red"; // RUIM
+    if (ppm < 10) return "green";
+    if (ppm <= 50) return "orange";
+    return "red";
   };
 
-    const getIcon = (ppm) =>
+  const getIcon = (ppm) =>
     new L.DivIcon({
-        html: ReactDOMServer.renderToString(
+      html: ReactDOMServer.renderToString(
         <FaCloud size={22} color={getQualityColor(ppm)} />
-        ),
-        className: "",
-        iconSize: [22, 22],
-        iconAnchor: [11, 22],
-        popupAnchor: [0, -22],
+      ),
+      className: "",
+      iconSize: [22, 22],
+      iconAnchor: [11, 22],
+      popupAnchor: [0, -22],
     });
 
-     const fetchSensorData = async (id) => {
-        try {
-        const { data } = await api.get(`/sensor-data/${mac}`);
-        // supondo que backend retorna algo como { ppm: 12, timestamp: "2025-10-04T12:00:00Z" }
-        setSensorData((prev) => ({ ...prev, [id]: data }));
-        } catch (e) {
-        console.error("Erro ao buscar dados do sensor", e);
-        }
-    };
+  const fetchSensorData = async (mac) => {
+    try {
+      const { data } = await api.get(`/sensor-data/${mac}`);
+      setSensorData((prev) => ({ ...prev, [mac]: data }));
+    } catch (e) {
+      console.error("Erro ao buscar dados do sensor", e);
+    }
+  };
+
+  const WORLD_BOUNDS = L.latLngBounds([-85, -180], [85, 180]);
 
   return (
-   <MapContainer
-    center={[-7.11532, -34.861]} 
-    zoom={3}          // mostra continentes inicialmente
-    minZoom={2}       // não deixa "abrir" demais (mundo já visível)
-    maxZoom={18}      // suficiente para ver ruas e bairros
-    style={{ height: "100vh", width: "100%" }}
-  >
-    <TileLayer
-      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-      noWrap={true}
-    />
-      {devices.map((device) => {
-        const sensor = sensorData[device.id];
-        const ppm = sensor?.ppm ?? null;
+    <div
+      style={{
+        position: "absolute",
+        top: "56px",
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: "100%",
+        height: "calc(100vh - 56px)",
+        overflow: "hidden",
+      }}
+    >
+      <MapContainer
+        center={[-7.11532, -34.861]}
+        zoom={3}
+        minZoom={3}
+        maxZoom={18}
+        maxBounds={WORLD_BOUNDS}
+        maxBoundsViscosity={1.0}
+        worldCopyJump={false}
+        style={{ height: "100%", width: "100%" }}
+        attributionControl={false}
+        whenReady={(ev) => ev.target.invalidateSize()}
+      >
+        <TileLayer
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          noWrap={true}
+        />
 
-        return (
-          <Marker
-            key={device.id ?? device.mac}
-            position={[device.latitude, device.longitude]}
-            icon={getIcon(ppm)}
-            eventHandlers={{
-              click: () => fetchSensorData(device.mac),
-            }}
-          >
-            <Popup>
-              <strong>{device.deviceName ?? "Dispositivo"}</strong>
-              <br />
-              Latitude: {device.latitude}
-              <br />
-              Longitude: {device.longitude}
-              <br />
-              Gas: {device.gasType ?? "-"}
-              <br />
-            </Popup>
-            <Tooltip>Clique no marcador {device.deviceName ?? "Dispositivo"} para mais detalhes</Tooltip>
-          </Marker>
-        );
-      })}
-    </MapContainer>
-  )
+        {devices.map((device) => {
+          const sensor = sensorData[device.mac];
+          const ppm = sensor?.ppm ?? null;
+
+          return (
+            <Marker
+              key={device.id ?? device.mac}
+              position={[device.latitude, device.longitude]}
+              icon={getIcon(ppm)}
+              eventHandlers={{ click: () => fetchSensorData(device.mac) }}
+            >
+              <Popup>
+                <strong>{device.deviceName ?? "Dispositivo"}</strong>
+                <br />
+                Latitude: {device.latitude}
+                <br />
+                Longitude: {device.longitude}
+                <br />
+                Gas: {device.gasType ?? "-"}
+                <br />
+                {ppm != null && <>PPM: {ppm}<br /></>}
+              </Popup>
+              <Tooltip>
+                Clique no marcador {device.deviceName ?? "Dispositivo"} para mais detalhes
+              </Tooltip>
+            </Marker>
+          );
+        })}
+      </MapContainer>
+    </div>
+  );
 }

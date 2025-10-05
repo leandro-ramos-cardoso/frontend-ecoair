@@ -3,9 +3,10 @@ import "leaflet/dist/leaflet.css";
 import { useEffect, useState } from "react";
 import L from "leaflet";
 import { api } from "../services/api";
-import { Container, Offcanvas, ListGroup } from "react-bootstrap";
+import { Container, Offcanvas, ListGroup, Button } from "react-bootstrap";
 import { FaCloud } from "react-icons/fa";
 import ReactDOMServer from "react-dom/server";
+import { Link, useNavigate } from "react-router-dom";
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -15,6 +16,8 @@ L.Icon.Default.mergeOptions({
 });
 
 export default function WorldMap() {
+  const navigate = useNavigate()
+
   const [devices, setDevices] = useState([]);
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState(false);
@@ -199,9 +202,10 @@ export default function WorldMap() {
               ) : currentPpm != null ? (
                 <>
                   <ListGroup.Item>
-                    <strong>PPM (Partes por Milhão):</strong>
+                    <strong>{selectedDevice?.gasType}:</strong>
                     <span style={{ color: getQualityColor(currentPpm), fontWeight: 'bold' }}> {currentPpm}</span>
                   </ListGroup.Item>
+                  <Button onClick={() => navigate(`/dashboard/${selectedDevice?.id}`)} className="mt-4">Dashboard</Button>
                 </>
               ) : (
                 <ListGroup.Item>Nenhum dado de leitura recente disponível.</ListGroup.Item>

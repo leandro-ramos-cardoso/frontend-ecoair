@@ -1,4 +1,4 @@
-import { MapContainer, TileLayer, Marker, Popup, Tooltip } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Tooltip } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { useEffect, useState } from "react";
 import L from "leaflet";
@@ -6,8 +6,9 @@ import { api } from "../services/api";
 import { Container, Offcanvas, ListGroup, Button } from "react-bootstrap";
 import { FaCloud } from "react-icons/fa";
 import ReactDOMServer from "react-dom/server";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
+// Corrige ícones padrão do Leaflet
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png",
@@ -16,7 +17,7 @@ L.Icon.Default.mergeOptions({
 });
 
 export default function WorldMap() {
-  const navigate = useNavigate()
+  const navigate = useNavigate();
 
   const [devices, setDevices] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -31,6 +32,7 @@ export default function WorldMap() {
   const handleClose = () => setShowOffcanvas(false);
   const handleShow = () => setShowOffcanvas(true);
 
+  // === Carrega dispositivos ===
   useEffect(() => {
     const ctrl = new AbortController();
     (async () => {
@@ -63,58 +65,60 @@ export default function WorldMap() {
   if (loading) return <div>Carregando mapa…</div>;
   if (erro) return <Container className="mt-4 text-danger">Erro ao carregar dados: {erro}</Container>;
 
-  const getQualityColor = (ppm) => {
-    if (ppm == null) return "gray";
-    if (ppm < 10) return "green";
-    if (ppm <= 50) return "orange";
-    return "red";
+  // === COR baseada no ENUM vindo do backend ===
+  const getStatusColor = (status) => {
+    switch (status) {
+      case "BOA":
+        return "green";
+      case "MEDIA":
+        return "orange";
+      case "RUIM":
+        return "red";
+      default:
+        return "gray";
+    }
   };
 
-  const getIcon = (ppm) =>
+  const getStatusIcon = (status) =>
     new L.DivIcon({
-      html: ReactDOMServer.renderToString(
-        <FaCloud size={22} color={getQualityColor(ppm)} />
-      ),
+      html: ReactDOMServer.renderToString(<FaCloud size={22} color={getStatusColor(status)} />),
       className: "",
       iconSize: [22, 22],
       iconAnchor: [11, 22],
       popupAnchor: [0, -22],
     });
 
+  // === Busca dados do sensor quando clica no marcador ===
   const fetchSensorData = async (device) => {
     setSelectedDevice(device);
     handleShow();
 
     const deviceMac = device.mac;
-    setSensorLoading(prev => ({ ...prev, [deviceMac]: true }));
-    setSensorData(prev => ({ ...prev, [deviceMac]: null }));
+    setSensorLoading((prev) => ({ ...prev, [deviceMac]: true }));
+    setSensorData((prev) => ({ ...prev, [deviceMac]: null }));
 
     try {
-
       const { data } = await api.get(`/sensor-data?mac=${encodeURIComponent(device.mac)}`);
-
       const isArray = Array.isArray(data);
       const latestItem = isArray && data.length > 0 ? data[data.length - 1] : null;
 
       let latestData = null;
-
       if (latestItem) {
         latestData = {
           ...latestItem,
-          ppm: latestItem.sensorValue
+          ppm: latestItem.sensorValue,
         };
       }
 
       setSensorData((prev) => ({
         ...prev,
-        [deviceMac]: latestData
+        [deviceMac]: latestData,
       }));
-
     } catch (e) {
       console.error(`Erro ao buscar dados do sensor para MAC ${deviceMac}:`, e);
       setSensorData((prev) => ({ ...prev, [deviceMac]: { error: true } }));
     } finally {
-      setSensorLoading(prev => ({ ...prev, [deviceMac]: false }));
+      setSensorLoading((prev) => ({ ...prev, [deviceMac]: false }));
     }
   };
 
@@ -125,6 +129,12 @@ export default function WorldMap() {
   const currentPpm = currentSensorData?.ppm ?? null;
   const currentError = currentSensorData?.error ?? false;
 
+  const getQualityColor = (ppm) => {
+    if (ppm == null) return "gray";
+    if (ppm < 10) return "green";
+    if (ppm <= 50) return "orange";
+    return "red";
+  };
 
   return (
     <>
@@ -152,60 +162,88 @@ export default function WorldMap() {
           attributionControl={false}
           whenReady={(ev) => ev.target.invalidateSize()}
         >
-          <TileLayer
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            noWrap={true}
-          />
+          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" noWrap={true} />
 
-          {devices.map((device) => {
-            const sensor = sensorData[device.mac];
-            const ppm = sensor?.ppm ?? null;
-
-            return (
-              <Marker
-                key={device.id ?? device.mac}
-                position={[device.latitude, device.longitude]}
-                icon={getIcon(ppm)}
-                eventHandlers={{ click: () => fetchSensorData(device) }}
-              >
-                <Tooltip>
-                  Clique no marcador {device.deviceName ?? "Dispositivo"} para mais detalhes
-                </Tooltip>
-              </Marker>
-            );
-          })}
+          {devices.map((device) => (
+            <Marker
+              key={device.id ?? device.mac}
+              position={[device.latitude, device.longitude]}
+              icon={getStatusIcon(device.deviceStatus)} // <-- cor do ENUM
+              eventHandlers={{ click: () => fetchSensorData(device) }}
+            >
+              <Tooltip>
+                Clique no marcador {device.deviceName ?? "Dispositivo"} para mais detalhes
+              </Tooltip>
+            </Marker>
+          ))}
         </MapContainer>
       </div>
 
       <Offcanvas show={showOffcanvas} onHide={handleClose} placement="end">
         <Offcanvas.Header closeButton>
-          <Offcanvas.Title>
-            {selectedDevice?.deviceName ?? "Detalhes do Dispositivo"}
-          </Offcanvas.Title>
+          <Offcanvas.Title>{selectedDevice?.deviceName ?? "Detalhes do Dispositivo"}</Offcanvas.Title>
         </Offcanvas.Header>
         <Offcanvas.Body>
           {selectedDevice ? (
             <ListGroup variant="flush">
-              <ListGroup.Item><strong>MAC:</strong> {selectedDevice.mac}</ListGroup.Item>
-              <ListGroup.Item><strong>Tipo de Gás:</strong> {selectedDevice.gasType ?? "-"}</ListGroup.Item>
-              <ListGroup.Item><strong>Latitude:</strong> {selectedDevice.latitude}</ListGroup.Item>
-              <ListGroup.Item><strong>Longitude:</strong> {selectedDevice.longitude}</ListGroup.Item>
+              <ListGroup.Item>
+                <strong>Status do Dispositivo:</strong>{" "}
+                <span
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 8,
+                    fontWeight: 600,
+                    color: getStatusColor(selectedDevice.deviceStatus),
+                  }}
+                >
+                  <span
+                    style={{
+                      width: 10,
+                      height: 10,
+                      borderRadius: "50%",
+                      background: getStatusColor(selectedDevice.deviceStatus),
+                      display: "inline-block",
+                    }}
+                  />
+                  {selectedDevice.deviceStatus ?? "-"}
+                </span>
+              </ListGroup.Item>
+
+              <ListGroup.Item>
+                <strong>MAC:</strong> {selectedDevice.mac}
+              </ListGroup.Item>
+              <ListGroup.Item>
+                <strong>Tipo de Gás:</strong> {selectedDevice.gasType ?? "-"}
+              </ListGroup.Item>
+              <ListGroup.Item>
+                <strong>Latitude:</strong> {selectedDevice.latitude}
+              </ListGroup.Item>
+              <ListGroup.Item>
+                <strong>Longitude:</strong> {selectedDevice.longitude}
+              </ListGroup.Item>
 
               <hr />
 
               <h6>Dados de Leitura:</h6>
-
               {sensorIsLoading ? (
                 <ListGroup.Item className="text-primary">Carregando dados do sensor...</ListGroup.Item>
               ) : currentError ? (
-                <ListGroup.Item className="text-danger">Erro ao carregar dados. Verifique a API ou permissões.</ListGroup.Item>
+                <ListGroup.Item className="text-danger">
+                  Erro ao carregar dados. Verifique a API ou permissões.
+                </ListGroup.Item>
               ) : currentPpm != null ? (
                 <>
                   <ListGroup.Item>
                     <strong>{selectedDevice?.gasType}:</strong>
-                    <span style={{ color: getQualityColor(currentPpm), fontWeight: 'bold' }}> {currentPpm}</span>
+                    <span style={{ color: getQualityColor(currentPpm), fontWeight: "bold" }}>
+                      {" "}
+                      {currentPpm}
+                    </span>
                   </ListGroup.Item>
-                  <Button onClick={() => navigate(`/dashboard/${selectedDevice?.id}`)} className="mt-4">Dashboard</Button>
+                  <Button onClick={() => navigate(`/dashboard/${selectedDevice?.id}`)} className="mt-4">
+                    Dashboard
+                  </Button>
                 </>
               ) : (
                 <ListGroup.Item>Nenhum dado de leitura recente disponível.</ListGroup.Item>
